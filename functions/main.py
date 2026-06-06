@@ -66,21 +66,61 @@ class DataExplorer:
             y, sr = librosa.load(path, sr=None)
             t = np.arange(len(y)) / sr  # Formula: t_i = i / sfreq
             print("[" + genre + "] sr=" + str(sr) + "Hz, samples=" + str(len(y)) + ", duration=" + str(round(t[-1], 2)) + "s")
+
     def analyze_lyrics(self):
         df = self.dm.df.copy()
         df['clean'] = df['lyrics'].apply(lambda x: re.sub(r'[^\w\s]', '', str(x).lower()))
         df['token_len'] = df['clean'].apply(lambda x: len(x.split()))
+
         genres = sorted(df['genre'].unique())
-        # Distribution boxplot
-        plt.figure(figsize=(10, 4))
-        plt.boxplot([df[df['genre'] == g]['token_len'].values for g in genres], labels=genres)
-        plt.title('Lyric Token Length by Genre')
+
+        # Dataset distribution
+        plt.figure(figsize=(8, 4))
+        df['genre'].value_counts().sort_index().plot(kind='bar')
+        plt.title('Genre Distribution')
+        plt.ylabel('Count')
         plt.show()
+
+        # Distribution boxplot (outliers hidden for readability)
+        plt.figure(figsize=(10, 4))
+        plt.boxplot(
+            [df[df['genre'] == g]['token_len'].values for g in genres],
+            labels=genres,
+            showfliers=False
+        )
+        plt.title('Lyric Token Length by Genre')
+        plt.ylabel('Tokens')
+        plt.show()
+
+        # Average lyric length per genre
+        plt.figure(figsize=(8, 4))
+        (
+            df.groupby('genre')['token_len']
+            .mean()
+            .sort_values()
+            .plot(kind='bar')
+        )
+        plt.title('Average Lyric Length by Genre')
+        plt.ylabel('Average Tokens')
+        plt.show()
+
         # Word frequency counter minus common stop words
-        for genre in genres:
+        for genre in ['hiphop', 'metal', 'pop']:
             words = ' '.join(df[df['genre'] == genre]['clean']).split()
             filtered = [w for w in words if w not in self.STOP_WORDS and len(w) > 2]
-            print("[" + genre + "] top-5: " + str(Counter(filtered).most_common(5)))
+
+            top10 = Counter(filtered).most_common(10)
+
+            print("[" + genre + "] top-10: " + str(top10))
+
+            plt.figure(figsize=(8, 3))
+            plt.bar(
+                [w for w, _ in top10],
+                [c for _, c in top10]
+            )
+            plt.title('Top Words - ' + genre)
+            plt.xticks(rotation=45)
+            plt.show()
     def analyze_frequency_domain(self):
         samples = self.dm.df.groupby('genre')['filename'].first().to_dict()
         fig, axes = plt.subplots(2, 4, figsize=(16, 6))
