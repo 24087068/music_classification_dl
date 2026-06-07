@@ -132,7 +132,7 @@ class DataExplorer:
             ax.set_title(genre)
         plt.show()
 
-# RNN:
+# LSTM (Audio):
 N_MELS = 128
 SR = 22050
 MAX_FRAMES = 650
@@ -153,6 +153,17 @@ def plot_cm(y_true, y_pred, title, labels):
     disp.plot(xticks_rotation=45, colorbar=False)
     plt.title(title)
     plt.show()
+
+def plot_architecture(model, title):
+    # Standard Keras architecture visualization (needs pydot + graphviz installed)
+    try:
+        from tensorflow.keras.utils import plot_model
+        out_path = title.lower().replace(' ', '_') + '_architecture.png'
+        plot_model(model, to_file=out_path, show_shapes=True, show_layer_names=True)
+        ipd.display(ipd.Image(out_path))
+    except Exception as e:
+        print("Architecture plot skipped (install pydot + graphviz to enable):", e)
+        model.summary()
 
 class AudioFeatureExtractor:
     def __init__(self, config, n_mels=N_MELS, max_frames=MAX_FRAMES, sr=SR):
@@ -187,16 +198,16 @@ class AudioFeatureExtractor:
             arrays.append(self.extract(fn, is_test=is_test))
         return np.array(arrays)
 
-class AudioGRUModel:
+class AudioLSTMModel:
     def __init__(self, config, n_mels=N_MELS, max_frames=MAX_FRAMES):
         self.cfg = config
-        self.checkpoint_path = os.path.join(config.CHECKPOINT_DIR, 'audio_gru_best.keras')
+        self.checkpoint_path = os.path.join(config.CHECKPOINT_DIR, 'audio_lstm_best.keras')
 
         self.model = keras.Sequential([
             layers.Input(shape=(max_frames, n_mels)),
             layers.MaxPool1D(pool_size=2),
-            layers.GRU(64, return_sequences=True),
-            layers.GRU(64),
+            layers.LSTM(64, return_sequences=True),
+            layers.LSTM(64),
             layers.Dense(32, activation='relu'),
             layers.Dropout(0.2),
             layers.Dense(8, activation='softmax')
